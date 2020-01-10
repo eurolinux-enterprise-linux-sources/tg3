@@ -1,12 +1,13 @@
 %define kmod_name		tg3
-%define kmod_driver_version	3.122
-%define kmod_rpm_release	1
-%define kmod_git_hash		b5435d9eba68ec9af045ba9beab36202ebf957ec
-%define kmod_kernel_version	2.6.32-220.el6
+%define kmod_driver_version	3.137
+%define kmod_rpm_release	2
+%define kmod_git_hash		99caa1e0d9c7c2fc69a4974d19ce952c26f629d7
+%define kmod_kernel_version	2.6.32-504.el6
+%define kernel_version		2.6.32-504.el6
 %define kmod_kbuild_dir		drivers/net/
 
 
-%{!?dist: %define dist .el6}
+%{!?dist: %define dist .el6_6}
 
 Source0:	%{kmod_name}-%{kmod_driver_version}.tar.bz2			
 Source1:	%{kmod_name}.files			
@@ -16,6 +17,8 @@ Source4:	find-provides.ksyms
 Source5:	kmodtool			
 Source6:	symbols.greylist-i686			
 Source7:	symbols.greylist-x86_64			
+
+Patch0:		tg3.patch
 
 %define __find_requires %_sourcedir/find-requires.ksyms
 %define __find_provides %_sourcedir/find-provides.ksyms %{kmod_name} %{?epoch:%{epoch}:}%{version}-%{release}
@@ -29,7 +32,7 @@ Group:		System/Kernel
 License:	GPLv2
 URL:		http://www.kernel.org/
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
-BuildRequires:	%kernel_module_package_buildreqs
+BuildRequires:	%kernel_module_package_buildreqs kernel-devel = %kmod_kernel_version
 ExclusiveArch:  i686 x86_64
 
 
@@ -42,6 +45,7 @@ ExclusiveArch:  i686 x86_64
 
 %prep
 %setup
+%patch0 -p1
 set -- *
 mkdir source
 mv "$@" source/
@@ -62,6 +66,9 @@ for flavor in %flavors_to_build; do
 
 	make -C %{kernel_source $flavor} M=$PWD/obj/$flavor/%{kmod_kbuild_dir} \
 		NOSTDINC_FLAGS="-I $PWD/obj/$flavor/include"
+
+	# mark modules executable so that strip-to-file can strip them
+	find obj/$flavor/%{kmod_kbuild_dir} -name "*.ko" -type f -exec chmod u+x '{}' +
 done
 
 %{SOURCE2} %{name} %{kmod_kernel_version} obj > source/depmod.conf
@@ -91,21 +98,12 @@ install -m 644 -D source/depmod.conf $RPM_BUILD_ROOT/etc/depmod.d/%{kmod_name}.c
 install -m 644 -D source/symbols.greylist $RPM_BUILD_ROOT/usr/share/doc/kmod-%{kmod_name}/greylist.txt
 
 if [ -d source/firmware ]; then
-	make -C source/firmware INSTALL_PATH=$RPM_BUILD_ROOT INSTALL_DIR= install
+	make -C source/firmware INSTALL_PATH=$RPM_BUILD_ROOT INSTALL_DIR=updates install
 fi
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
-* Fri Apr 13 2012 Jiri Benc <jbenc@redhat.com> 3.122 1
-- updated to new driver version
-
-* Fri Aug 12 2011 Jiri Olsa <jolsa@redhat.com> 3.119 2
-- fix rpm dependencies
-
-* Fri Aug 12 2011 Jiri Olsa <jolsa@redhat.com> 3.119 1
-- zstream build
-
-* Tue Aug 02 2011 Jiri Olsa <jolsa@redhat.com> 3.113 1
+* Mon Apr 20 2015 Petr Oros <poros@redhat.com> 3.137 1
 - tg3 DUP module

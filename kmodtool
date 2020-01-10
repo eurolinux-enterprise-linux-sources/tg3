@@ -41,17 +41,6 @@
 
 shopt -s extglob
 
-# Due to the anaconda installer's kernel is RHEL6.1,
-# we need to put the base RHEL6.1 kernel version
-# into the rpm dependencies. The driver itself might
-# be built against whatever Z-stream kernel.
-#
-# TODO pass this as a parameter to the kernel_module_package macro
-# 
-# Provides:         kernel-modules = ${prorel}.$(arch)
-#
-prorel="2.6.32-220.el6"
-
 myprog="kmodtool"
 myver="rhel6-rh2"
 knownvariants=@(debug|kdump)
@@ -60,9 +49,25 @@ kver=
 verrel=
 variant=
 
+get_kernel_release ()
+{
+  if [[ -z $1 ]]; then
+    uname -r
+    return
+  fi
+  local arch=$(arch)
+  local verrel=${1%.$arch}
+  local verprefix=${verrel%.*}
+  local versuffix=${verrel#$verprefix}
+  verrel=$(ls -Ud /usr/src/kernels/$verprefix*$versuffix.$arch | sort -V | tail -n 1)
+  verrel=${verrel##*/}
+  [[ -z $verrel ]] && verrel=$1.$arch
+  echo "$verrel"
+}
+
 get_verrel ()
 {
-  verrel=${1:-$(uname -r)}
+  verrel=$(get_kernel_release "$1")
   verrel=${verrel%%$knownvariants}
 }
 
@@ -72,10 +77,25 @@ print_verrel ()
   echo "${verrel}"
 }
 
+get_verrel_for_deps ()
+{
+  verrel_dep=${1:-$(uname -r)}
+  verrel_dep=${verrel_dep%%$knownvariants}
+  # TODO: rpmtemplate should be called with %{kernel_version}, not %{kverrel}
+  # begin hack (remove z-stream subversion)
+  local verprefix=${verrel_dep%-*}
+  local versuffix=${verrel_dep##*-}
+  local verinfix=${versuffix%.*.*}
+  versuffix=${versuffix#$verinfix}
+  verinfix=${verinfix%%.*}
+  verrel_dep=$verprefix-$verinfix$versuffix
+  # end hack
+}
+
 get_variant ()
 {
   get_verrel $@
-  variant=${1:-$(uname -r)}
+  variant=$(get_kernel_release "$1")
   variant=${variant##$verrel}
   variant=${variant:-'""'}
 }
@@ -139,7 +159,7 @@ get_rpmtemplate ()
     # Turn of the internal dep generator so we will use the kmod scripts.
     echo "%global _use_internal_dependency_generator 0"
     cat <<EOF
-Provides:         kernel-modules = ${prorel}.$(arch)
+Provides:         kernel-modules = ${verrel_dep}${dotvariant}
 Provides:         ${kmod_name}-kmod = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires(post):   /sbin/depmod
 Requires(postun): /sbin/depmod
@@ -216,6 +236,7 @@ print_rpmtemplate ()
   shift
   kver="${1}"
   get_verrel "${1}"
+  get_verrel_for_deps "${1}"
   shift
   if [ -z "${kmod_name}" ] ; then
     echo "Please provide the kmodule-name as first parameter." >&2
