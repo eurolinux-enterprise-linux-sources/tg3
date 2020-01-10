@@ -1,0 +1,15 @@
+mdiobus_alloc
+mdiobus_free
+mdiobus_register
+mdiobus_unregister
+pci_vpd_find_info_keyword
+pci_vpd_find_tag
+pcie_get_readrq
+phy_connect
+phy_disconnect
+phy_ethtool_gset
+phy_ethtool_sset
+phy_mii_ioctl
+phy_start
+phy_start_aneg
+phy_stop

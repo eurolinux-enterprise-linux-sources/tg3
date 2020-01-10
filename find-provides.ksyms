@@ -1,0 +1,11 @@
+#! /bin/sh
+
+IFS=$'\n'
+
+for module in $(grep -E '/lib/modules/.+\.ko$'); do
+    nm $module \
+    | sed -r -ne 's:^0*([0-9a-f]+) A __crc_(.+):ksym(\2) = 0x\1:p'
+    modname=$(echo $module | sed "s|^.*/\\([^/]*\\)\.ko\$|\\1|")
+    [ $modname != $1 ] && echo "kmod-$modname = $2"
+done \
+| sort -u

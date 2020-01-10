@@ -1,3 +1,4 @@
 %defattr(644,root,root,755)
 /lib/modules/%2-%1
 /etc/depmod.d/tg3.conf
+/usr/share/doc/kmod-tg3/greylist.txt

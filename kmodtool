@@ -50,7 +50,7 @@ shopt -s extglob
 # 
 # Provides:         kernel-modules = ${prorel}.$(arch)
 #
-prorel="2.6.32-131.0.15.el6"
+prorel="2.6.32-220.el6"
 
 myprog="kmodtool"
 myver="rhel6-rh2"
